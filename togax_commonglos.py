@@ -3,8 +3,10 @@ from toga.style.pack import COLUMN, ROW, Pack
 from toga_iOS.window import MainWindow as MainWindow_Impl
 from toga.window import MainWindow
 from toga_iOS.container import ControlledContainer, NavigationContainer, Container
-from toga_iOS.libs import UIScrollView, UIViewAutoresizing, UIView, UINavigationController, UIViewController, UIColor, UIWindow, UIScreen, UITabBarController, UITabBarItem, UIApplication
-from rubicon.objc import NSMakeSize, CGRectMake, objc_method, objc_property, SEL, send_super
+from toga_iOS.libs import UIScrollView, UIViewAutoresizing, UIView, UINavigationController, UIViewController, UIColor, UIWindow, UIScreen, UITabBarController, UITabBarItem, UIApplication, UIScreen, NSNotificationCenter, uikit
+from rubicon.objc import NSMakeSize, CGRectMake, objc_method, objc_property, SEL, send_super, CGSize, NSObject, ObjCInstance, objc_const, ObjCClass
+UIDeviceOrientationDidChangeNotification = objc_const(uikit, "UIDeviceOrientationDidChangeNotification")
+UIDevice = ObjCClass("UIDevice")
 import toga_iOS.factory
 from enum import Enum
 
@@ -132,6 +134,29 @@ class GlosViewController(UIViewController):
                 self.container.content.interface.refresh()
                 self.container.refreshed()
 
+class OrientationMonitor(NSObject):
+
+    @objc_method
+    def deviceOrientationDidChange_(self, notification):
+        self.performSelector(SEL("refreshContent"), withObject=None, afterDelay=0)
+
+    
+    @objc_method
+    def refreshContent(self):
+        if hasattr(toga.App.app.main_window, "refresh_content"):
+            toga.App.app.main_window.refresh_content()
+
+MONITOR = OrientationMonitor.alloc().init()
+
+center = NSNotificationCenter.defaultCenter
+center.addObserver_selector_name_object_(
+    MONITOR,
+    SEL("deviceOrientationDidChange:"),   # selector
+    UIDeviceOrientationDidChangeNotification,
+    None
+)
+UIDevice.currentDevice.beginGeneratingDeviceOrientationNotifications()
+
 class SafeBottomContainer(Container):
     
     def __init__(
@@ -162,7 +187,8 @@ class GlosTabBarController(UITabBarController):
     impl = objc_property(object, weak=True)
 
     @objc_method
-    def tabBar_didSelectItem_(self, tabBar, item) -> None:
+    def tabBarController_didSelectViewController_(self, contr, vc) -> None:
+        print("DID SEL")
         # An item that actually on the tab bar has been selected
         self.performSelector(SEL("refreshContent"), withObject=None, afterDelay=0)
     
@@ -171,7 +197,7 @@ class GlosTabBarController(UITabBarController):
         # Find the currently visible container, and refresh layout of the content.
         for container in self.impl.subconts:
             if container.controller == self.selectedViewController:
-#                print("REFRESH", container)
+                print("REFRESH", container)
                 container.content.interface.refresh()
                 container.refreshed()
 
@@ -241,11 +267,12 @@ class OptionWindow_Impl(MainWindow_Impl):
     def content_refreshed(self, container):
         container.min_width = container.content.interface.layout.min_width
         container.min_height = container.content.interface.layout.min_height
+        print(container.content.interface.layout.height)
         if hasattr(container, "scroll"):
             width = container.width
 #            print(container.content)
 #            print("==0:", container.height)
-            height = container.content.interface.layout.height
+            height = max(UIScreen.mainScreen.bounds.size.height + 1, container.content.interface.layout.height)
 #            print(width, height)
             container.scroll.contentSize = NSMakeSize(width, height)
             container.native.frame = CGRectMake(0, 0, width, height)
@@ -267,6 +294,11 @@ class OptionWindow_Impl(MainWindow_Impl):
 
     def set_title(self, title):
         self.nav.topViewController.title = title
+    
+    def refresh_content(self):
+        print("REFRESH")
+        for subcont in self.subconts:
+            subcont.content.interface.refresh()
 
 toga_iOS.factory._glos_OptionWindow = OptionWindow_Impl
 
@@ -275,5 +307,7 @@ class OptionWindow(MainWindow):
     def __init__(self, tabs, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._impl.set_tabs(tabs)
+    def refresh_content(self):
+        self._impl.refresh_content()
         
 __all__ = ["OptionWindow", "create_webview_window", "ScrollMainWindow", "TabType"]

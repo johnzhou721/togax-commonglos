@@ -1,5 +1,7 @@
 Note that for the scroll options, the content must be *taller than the screen* -- I'm not sure why; it appears that I've gotten everything set up correctly and it might just be a native limitation.
 
+Experimental package.  Does not support iPads
+
 Example usage:
 ```
 """
