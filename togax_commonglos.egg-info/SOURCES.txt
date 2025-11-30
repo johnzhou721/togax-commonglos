@@ -1,0 +1,6 @@
+pyproject.toml
+togax_commonglos.py
+togax_commonglos.egg-info/PKG-INFO
+togax_commonglos.egg-info/SOURCES.txt
+togax_commonglos.egg-info/dependency_links.txt
+togax_commonglos.egg-info/top_level.txt

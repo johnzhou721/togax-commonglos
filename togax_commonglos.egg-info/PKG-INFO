@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: togax-commonglos
+Version: 0.1.0
+Summary: Using common 'Liquid Glass' patterns with Toga iOS
+Author-email: John Zhou <johnzhou721@gmail.com>
+Project-URL: Homepage, https://github.com/johnzhou721/togax-commonglos
+Project-URL: Documentation, https://github.com/johnzhou721/togax-commonglos#readme
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
