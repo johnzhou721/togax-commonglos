@@ -320,10 +320,12 @@ class OptionWindow_Impl(MainWindow_Impl):
 
     def set_title(self, title):
         self.nav.topViewController.title = title
-    
+
+    # Used for rotate handler.  So reevaluate top offset to be accurate
     def refresh_content(self):
 #        print("REFRESH")
         for subcont in self.subconts:
+            subcont._top_offset = UIApplication.sharedApplication.statusBarFrame.size.height + self.nav.navigationBar.frame.size.height
             subcont.content.interface.refresh()
 
 toga_iOS.factory._glos_OptionWindow = OptionWindow_Impl
