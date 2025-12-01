@@ -9,16 +9,38 @@ UIDeviceOrientationDidChangeNotification = objc_const(uikit, "UIDeviceOrientatio
 UIDevice = ObjCClass("UIDevice")
 import toga_iOS.factory
 from enum import Enum
+import platform
 
 class TabType(Enum):
     NORMAL = 1
     SCROLL = 2
     WEB = 3
 
+UIScrollViewContentInsetAdjustmentAlways = 3
+
+class GlosScrollView(UIScrollView):
+    container = objc_property(object, weak=True)
+
+    @objc_method
+    def safeAreaInsetsDidChange(self):
+        send_super(__class__, self, "safeAreaInsetsDidChange")
+        self.performSelector(SEL("refreshContent"), withObject=None, afterDelay=0)
+
+    @objc_method
+    def refreshContent(self):
+        if self.container:
+            if self.container.content:
+                self.container.content.interface.refresh()
+                self.container.refreshed()
+
 class Scroll_ContainerMixin:
     def _prep_natives(self):
         self.contain_native = self.native
-        self.scroll = UIScrollView.alloc().init()
+        self.scroll = GlosScrollView.alloc().init()
+        self.scroll.container = self
+        # Suspect this is a native bug... I've set everything up as documented.
+        # But it's quite trivial to fix and there are no horizontal insets anyways so...
+        self.scroll.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAlways
         self.contain_native.addSubview(self.scroll)
         self.scroll.translatesAutoresizingMaskIntoConstraints = True
         self.scroll.autoresizingMask = (
@@ -38,7 +60,7 @@ class Scroll_ContainerMixin:
     
     @property
     def width(self):
-        return self.scroll.bounds.size.width
+        return self.scroll.safeAreaLayoutGuide.layoutFrame.size.width
     
     @property
     def height(self):
@@ -177,10 +199,14 @@ class SafeBottomContainer(Container):
 
     @property
     def height(self):
+        if platform.system() == "iPadOS":
+            return super().height
         return super().height - self.native.safeAreaInsets.bottom
     
     @property
     def top_offset(self):
+        if platform.system() == "iPadOS":
+            return self.layout_native.safeAreaInsets.top
         return self._top_offset
 
 class GlosTabBarController(UITabBarController):
@@ -188,7 +214,7 @@ class GlosTabBarController(UITabBarController):
 
     @objc_method
     def tabBarController_didSelectViewController_(self, contr, vc) -> None:
-        print("DID SEL")
+#        print("DID SEL")
         # An item that actually on the tab bar has been selected
         self.performSelector(SEL("refreshContent"), withObject=None, afterDelay=0)
     
@@ -197,7 +223,7 @@ class GlosTabBarController(UITabBarController):
         # Find the currently visible container, and refresh layout of the content.
         for container in self.impl.subconts:
             if container.controller == self.selectedViewController:
-                print("REFRESH", container)
+#                print("REFRESH", container)
                 container.content.interface.refresh()
                 container.refreshed()
 
@@ -267,12 +293,12 @@ class OptionWindow_Impl(MainWindow_Impl):
     def content_refreshed(self, container):
         container.min_width = container.content.interface.layout.min_width
         container.min_height = container.content.interface.layout.min_height
-        print(container.content.interface.layout.height)
+#        print(container.content.interface.layout.height)
         if hasattr(container, "scroll"):
             width = container.width
 #            print(container.content)
 #            print("==0:", container.height)
-            height = max(UIScreen.mainScreen.bounds.size.height + 1, container.content.interface.layout.height)
+            height = container.content.interface.layout.height
 #            print(width, height)
             container.scroll.contentSize = NSMakeSize(width, height)
             container.native.frame = CGRectMake(0, 0, width, height)
@@ -296,7 +322,7 @@ class OptionWindow_Impl(MainWindow_Impl):
         self.nav.topViewController.title = title
     
     def refresh_content(self):
-        print("REFRESH")
+#        print("REFRESH")
         for subcont in self.subconts:
             subcont.content.interface.refresh()
 
